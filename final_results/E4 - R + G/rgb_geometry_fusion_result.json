@@ -1,0 +1,27 @@
+{
+    "experiment": "E4_RGB_Geometry_Fusion",
+    "model": "RGBGeometryFusion",
+    "best_epoch": 15,
+    "best_val_acer": 0.0,
+    "threshold": 0.03999999910593033,
+    "parameters": 697985,
+    "train_size": 579,
+    "val_size": 160,
+    "test_size": 1027,
+    "sequence_length": 8,
+    "frame_stride": 5,
+    "image_size": 112,
+    "metrics": {
+        "accuracy": 92.79454722492697,
+        "precision": 92.19512195121952,
+        "recall": 98.69451697127938,
+        "f1": 95.33417402269862,
+        "APCER": 1.3054830287206265,
+        "BPCER": 24.521072796934863,
+        "ACER": 12.913277912827745,
+        "TN": 197,
+        "FP": 64,
+        "FN": 10,
+        "TP": 756
+    }
+}

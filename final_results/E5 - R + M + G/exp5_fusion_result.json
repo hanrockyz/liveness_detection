@@ -1,0 +1,31 @@
+{
+  "experiment": "E5_RGB_Motion_Geometry",
+  "model": "Exp5Fusion",
+  "training_performed_this_run": true,
+  "best_epoch": 6,
+  "best_val_acer": 0.0,
+  "threshold": 0.05,
+  "test_loss": 0.26197432116501057,
+  "test_metrics": {
+    "accuracy": 94.0603700097371,
+    "precision": 93.57231149567366,
+    "recall": 98.82506527415144,
+    "f1": 96.12698412698414,
+    "APCER": 1.1749347258485638,
+    "BPCER": 19.923371647509576,
+    "ACER": 10.54915318667907,
+    "TN": 209,
+    "FP": 52,
+    "FN": 9,
+    "TP": 757
+  },
+  "train_size": 579,
+  "val_size": 160,
+  "test_size": 1027,
+  "sequence_length": 8,
+  "frame_stride": 5,
+  "image_size": 112,
+  "geometry_dim": 936,
+  "label_real": 0,
+  "label_attack": 1
+}
