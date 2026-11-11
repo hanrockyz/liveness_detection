@@ -1,0 +1,66 @@
+{
+  "description": "Validation-set attack probabilities from existing E1-E6 checkpoints; no retraining.",
+  "dataset_root": "C:\\Coding\\TA\\src\\datasets\\processed",
+  "split": "train subjects held out for validation",
+  "validation_subjects": [
+    "client011",
+    "client012",
+    "client054"
+  ],
+  "sample_count": 160,
+  "real_count": 42,
+  "attack_count": 118,
+  "attack_species_counts": {
+    "ipad_video": 42,
+    "iphone_video": 42,
+    "printed_photo": 34
+  },
+  "sequence_length": 8,
+  "frame_stride": 5,
+  "image_size": 112,
+  "threshold_grid_for_next_step": {
+    "start": 0.01,
+    "stop_inclusive": 0.99,
+    "step": 0.01
+  },
+  "probability_semantics": "P(ATTACK); predict ATTACK when probability >= threshold",
+  "checkpoints": {
+    "E1": {
+      "path": "C:\\Coding\\TA\\src\\outputs\\checkpoints\\baseline_rgb_best.pth",
+      "epoch": 7,
+      "stored_threshold": 0.11000000000000001,
+      "seed": 42
+    },
+    "E2": {
+      "path": "C:\\Coding\\TA\\src\\outputs\\checkpoints\\motion_cnn_best.pth",
+      "epoch": 14,
+      "stored_threshold": 0.8600000000000002,
+      "seed": 42
+    },
+    "E3": {
+      "path": "C:\\Coding\\TA\\src\\outputs\\checkpoints\\rgb_motion_fusion_best.pth",
+      "epoch": 5,
+      "stored_threshold": 0.24000000000000005,
+      "seed": 42
+    },
+    "E4": {
+      "path": "C:\\Coding\\TA\\src\\outputs\\checkpoints\\rgb_geometry_fusion_best.pth",
+      "epoch": 15,
+      "stored_threshold": 0.03999999910593033,
+      "seed": 42
+    },
+    "E5": {
+      "path": "C:\\Coding\\TA\\src\\outputs\\checkpoints\\exp5_fusion_best.pth",
+      "epoch": 6,
+      "stored_threshold": 0.05,
+      "seed": 42
+    },
+    "E6": {
+      "path": "C:\\Coding\\TA\\src\\outputs\\checkpoints\\exp6_fusion_best.pth",
+      "epoch": 11,
+      "stored_threshold": 0.33,
+      "seed": 42
+    }
+  },
+  "output_csv": "C:\\Coding\\TA\\src\\outputs\\validation_predictions_E1_E6.csv"
+}
