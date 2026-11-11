@@ -1,0 +1,71 @@
+{
+  "description": "Per-sequence raw attack probabilities from the six saved checkpoints; no retraining performed.",
+  "project_root": "C:\\Coding\\TA",
+  "dataset_root": "C:\\Coding\\TA\\src\\datasets\\processed",
+  "geometry_path": "C:\\Coding\\TA\\src\\outputs\\geometry\\test_geometry.pt",
+  "device": "cpu",
+  "test_sequences": 1027,
+  "class_counts": {
+    "REAL_0": 261,
+    "ATTACK_1": 766
+  },
+  "sequence_length": 8,
+  "frame_stride": 5,
+  "image_size": 112,
+  "motion_construction": {
+    "E2": "MotionCNN receives RGB sequence and internally computes abs(I[t]-I[t-1]).",
+    "E3": "RGBMotionFusion internally computes abs(I[t]-I[t-1]).",
+    "E5_E6": "Signed motion differences I[t]-I[t-1], matching the original training scripts."
+  },
+  "geometry_alignment": {
+    "matched_sequences": 1027,
+    "minimum_valid_frames": 8,
+    "maximum_valid_frames": 8,
+    "feature_field": "normalized_geometry"
+  },
+  "checkpoints": {
+    "E1": {
+      "checkpoint": "C:\\Coding\\TA\\outputs\\checkpoints\\baseline_rgb_best.pth",
+      "epoch": 7,
+      "validation_acer": 0.0,
+      "stored_threshold": 0.11000000000000001,
+      "seed": 42
+    },
+    "E2": {
+      "checkpoint": "C:\\Coding\\TA\\src\\outputs\\checkpoints\\motion_cnn_best.pth",
+      "epoch": 14,
+      "validation_acer": 0.024616626311541566,
+      "stored_threshold": 0.8600000000000002,
+      "seed": 42
+    },
+    "E3": {
+      "checkpoint": "C:\\Coding\\TA\\outputs\\checkpoints\\rgb_motion_fusion_best.pth",
+      "epoch": 5,
+      "validation_acer": 0.0,
+      "stored_threshold": 0.24000000000000005,
+      "seed": 42
+    },
+    "E4": {
+      "checkpoint": "C:\\Coding\\TA\\src\\outputs\\checkpoints\\rgb_geometry_fusion_best.pth",
+      "epoch": 15,
+      "validation_acer": 0.0,
+      "stored_threshold": 0.03999999910593033,
+      "seed": null
+    },
+    "E5": {
+      "checkpoint": "C:\\Coding\\TA\\src\\outputs\\checkpoints\\exp5_fusion_best.pth",
+      "epoch": 6,
+      "validation_acer": 0.0,
+      "stored_threshold": 0.05,
+      "seed": 42
+    },
+    "E6": {
+      "checkpoint": "C:\\Coding\\TA\\src\\outputs\\checkpoints\\exp6_fusion_best.pth",
+      "epoch": 11,
+      "validation_acer": 0.0,
+      "stored_threshold": 0.33,
+      "seed": 42
+    }
+  },
+  "output_csv": "C:\\Coding\\TA\\outputs\\revision_predictions\\test_predictions_E1_E6.csv"
+}
