@@ -1,0 +1,262 @@
+\documentclass[a4paper,conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{array}
+
+\begin{document}
+
+\title{Web-Based Liveness Detection Using Adaptive Temporal Multi-Cue Feature Fusion}
+
+% \author{\IEEEauthorblockN{Hanrocky Halim}
+% \IEEEauthorblockA{\textit{School of Computing, Telkom University}\
+% Bandung, Indonesia\\
+% hanrocky@student.telkomuniversity.ac.id}}
+
+\maketitle
+
+\begin{abstract}
+Face presentation attack detection (PAD) helps protect face authentication systems from attacks in which a printed photograph or replayed video is presented to the capture sensor. This paper evaluates six video-based face liveness detection configurations using RGB appearance, inter-frame motion, and facial geometry on a processed version of the MSU Mobile Face Spoofing Database (MSU-MFSD). The configurations comprise an RGB CNN, a motion CNN, RGB--motion fusion, RGB--geometry fusion, concatenation-based RGB--motion--geometry fusion, and adaptive RGB--motion--geometry fusion with temporal mean pooling. A subject-disjoint protocol is used, and performance is assessed using accuracy, precision, recall, F1-score, attack presentation classification error rate (APCER), bona fide presentation classification error rate (BPCER), and average classification error rate (ACER). On the 1,027-sequence test set, the concatenation-based three-stream model (E5) achieves the highest accuracy of 94.06\%, while the adaptive-fusion model (E6) achieves the lowest ACER of 7.52\%. E6 attains APCER of 4.70\% and BPCER of 10.34\%, showing a different error trade-off from E5, whose APCER is 1.17\% and BPCER is 19.92\%. The results emphasize the importance of reporting class-specific PAD error rates alongside accuracy. A separate API benchmark records a median end-to-end HTTP latency of 175.18 ms over 50 successful requests, although the measurement excludes payload encoding and dataset disk reads. The evaluation is limited to one dataset and one subject-disjoint protocol; cross-dataset generalization is not established.
+\end{abstract}
+
+\begin{IEEEkeywords}
+face presentation attack detection, face liveness detection, multimodal fusion, facial geometry, temporal aggregation, MSU-MFSD
+\end{IEEEkeywords}
+
+\section{Introduction}
+Face recognition is used in identity verification and access control, but a face recognition pipeline can be deceived when an attacker presents a printed photograph or a replayed video of a genuine user. Face presentation attack detection (PAD) aims to distinguish bona fide presentations from presentation attacks. The MSU Mobile Face Spoofing Database (MSU-MFSD) was introduced to support research on print and replay attacks in mobile face authentication scenarios \cite{wen2015ida}.
+
+RGB appearance can encode texture and image-quality cues, while temporal differences can describe changes between adjacent frames. Facial landmark geometry provides another representation of motion-related structure. Prior research has investigated geometric temporal dynamics for face anti-spoofing \cite{chang2023geometry}; other work has explored multimodal feature alignment and fusion \cite{chen2025mmfas}. These studies motivate a controlled comparison of appearance, frame-difference motion, and landmark-derived geometry, without assuming that any one representation is always superior.
+
+This paper reports six experiments (E1--E6) using a consistent held-out test split. The contributions are: (1) a comparison of RGB-only, motion-only, and multi-stream configurations; (2) an evaluation of concatenation-based fusion against an adaptive fusion mechanism with temporal mean pooling; and (3) an error-focused analysis using APCER, BPCER, and ACER in addition to conventional classification metrics. This is an intra-dataset study; no cross-dataset generalization claim is made.
+
+\section{Related Work}
+\subsection{CNN-based face presentation attack detection}
+Deep learning has become a dominant approach to face anti-spoofing because CNNs can learn discriminative visual cues beyond manually designed texture descriptors; the broader design space, including auxiliary supervision, domain generalization, and multimodal sensing, is reviewed by Yu \emph{et al.}~\cite{yu2023survey}. Wen \emph{et al.} introduced MSU-MFSD and used image distortion analysis to detect print and replay attacks~\cite{wen2015ida}. Later methods explored stronger visual representations. Liu \emph{et al.} combined binary classification with auxiliary depth and rPPG supervision, arguing that auxiliary signals can guide networks toward more informative spoof cues~\cite{liu2018aux}. Yu \emph{et al.} proposed central-difference convolutions to capture intensity and gradient patterns, and reported evaluations across multiple benchmarks~\cite{yu2020cdcn}. These methods provide context for E1, the RGB-only CNN baseline in this study. Unlike CDCN or auxiliary-supervision systems, E1 uses a compact conventional CNN and classifies the first sampled frame; therefore, it is a controlled baseline rather than a direct reimplementation of a state-of-the-art architecture.
+
+\subsection{Temporal and motion-based cues}
+A single image can contain texture, reflection, moir\'e, and border cues, but temporal evidence can capture changes across a video. Yang \emph{et al.} proposed the Spatio-Temporal Anti-Spoofing Network (STASN), combining local spatial and global temporal cues~\cite{yang2019stasn}. Sun \emph{et al.} compared CNN, 3D convolution, CNN--LSTM, Conv-LSTM, and optical-flow-based streams, showing the relevance of explicit temporal modelling and stream fusion~\cite{sun2018temporal}. Residual spatiotemporal convolutional networks were also investigated as end-to-end video models for FAS~\cite{silva2023spatiotemporal}. These approaches are more temporally expressive than the frame-difference and mean-pooling design used here. E2 isolates absolute adjacent-frame differences, while E3 combines that motion stream with RGB appearance. In the present test split, E2 reaches 12.30\% ACER and E3 reaches 9.25\% ACER. This comparison suggests that motion features are more useful in combination with RGB than alone in this implementation; it does not establish that simple frame differences outperform optical flow or learned spatiotemporal architectures generally.
+
+\subsection{Facial geometry and multimodal fusion}
+Chang \emph{et al.} proposed Geometry-Aware Interaction Network (GAIN), using dense facial landmarks and spatiotemporal graph convolution to model normal versus abnormal presentation dynamics~\cite{chang2023geometry}. Their graph-based temporal representation differs from the 936-dimensional mean landmark-displacement descriptor and MLP used in E4--E6. The latter is a lightweight geometry feature, not a reproduction of GAIN. In our results, E4 reduces APCER to 1.31\% but has BPCER of 24.52\%, showing that geometry fusion changes the error trade-off rather than improving every metric.
+
+Multimodal FAS has also combined RGB with depth and infrared data. FaceBagNet uses multi-stream CNNs and modality-feature erasing~\cite{shen2019facebagnet}; Yu \emph{et al.} extended central-difference networks to RGB, depth, and infrared modalities~\cite{yu2020multimodal}; and mmFAS investigates multi-level alignment with switch-attention fusion~\cite{chen2025mmfas}. A separate dual-stream method fuses original images with bandpass-filtered representations~\cite{zeng2023bandpass}. These methods demonstrate that fusion design and complementary cues are active research directions, but their sensor inputs and protocols differ from this study. E5 concatenates RGB, motion, and landmark geometry features, whereas E6 uses learned scalar gates to weight these three features before temporal mean pooling. E5 yields the highest accuracy (94.06\%) and F1-score (96.13\%); E6 yields the lowest ACER (7.52\%). Thus, adaptive weighting provides a better APCER/BPCER balance in this experiment, but the result should not be interpreted as a general superiority claim over attention-based fusion or sensor-level multimodal systems.
+
+\subsection{Evaluation and deployment context}
+PAD results should report errors for bona fide presentations and presentation attacks separately; ISO/IEC 30107-3 specifies testing and reporting considerations for biometric presentation attack detection~\cite{iso30107}. Accordingly, this paper reports APCER, BPCER, and ACER alongside accuracy, precision, recall, and F1-score. In addition to offline classification, a separate benchmark measures the deployed prediction API's HTTP latency and throughput. This operational measurement complements, but is not interchangeable with, model accuracy: it depends on the server process, request format, and benchmark setup, and does not establish real-time camera capture performance.
+
+\section{Methodology}
+\subsection{Dataset and subject-disjoint protocol}
+Experiments use the Kaggle release ``MSU-MFSD Processed into Frames, which repackages MSU-MFSD as frame sequences~\cite{kagglemsumfsd}; the underlying database is described by Wen \emph{et al.}~\cite{wen2015ida}. The local dataset is organized into real and attack classes. Labels are encoded as 0 for REAL (bona fide) and 1 for ATTACK. Each sequence contains eight frames sampled with a stride of five frames; each frame is resized to $112\times112$ pixels. The split is subject-disjoint: 12 subjects are used for training, three for validation, and 20 for testing. The validation split contains 160 sequences, and the held-out test split contains 1,027 sequences, including 261 REAL and 766 ATTACK sequences.
+
+The non-geometry experiments use 621 training sequences after the subject-based split. Geometry preprocessing retains 579 training sequences because sequences with fewer than six valid landmark frames are excluded. The geometry-based experiments (E4--E6) therefore use 579 training sequences, 160 validation sequences, and 1,027 test sequences. This difference in training-set size is a limitation when comparing geometry-based and non-geometry experiments.
+
+\subsection{RGB and motion inputs}
+For E1, the RGB baseline classifies the first sampled frame of each sequence. E2 computes absolute differences between adjacent RGB frames, $\mathbf{M}_t=|\mathbf{I}_{t+1}-\mathbf{I}_t|$, yielding seven motion frames from an eight-frame sequence. The motion CNN encodes the difference frames and averages their feature vectors over time. Frame differencing is a simple handcrafted temporal representation, conceptually related to prior work that explores temporal cues for PAD, but the exact operator used here is explicitly defined by this study rather than claimed as a new formula~\cite{yang2019stasn,sun2018temporal}. E3 has separate RGB and motion CNN branches. Each branch extracts features over the sequence and applies temporal mean pooling; the pooled feature vectors are concatenated and passed to a fusion classifier.
+
+\subsection{Facial geometry descriptor}
+Facial landmarks are extracted using MediaPipe Face Landmarker. Each frame provides 468 two-dimensional landmark points. Missing detections are interpolated over time; sequences are retained when at least six of the eight frames contain valid detections. For landmark $j$ at time $t$, let $\mathbf{p}_{t,j}\in\mathbb{R}^2$ denote its coordinate. The per-sequence geometry descriptor is the mean of adjacent-frame landmark displacements. Landmark-based temporal dynamics are motivated by prior work such as GAIN~\cite{chang2023geometry}; however, the mean-displacement vector below is the specific descriptor implemented in this study, not a formula reproduced from GAIN:
+\begin{equation}
+\mathbf{g}=\operatorname{vec}\left(\frac{1}{T-1}\sum_{t=1}^{T-1}(\mathbf{P}_{t+1}-\mathbf{P}_t)\right),
+\label{eq:geometry}
+\end{equation}
+where $T=8$ and $\mathbf{P}_t\in\mathbb{R}^{468\times2}$. Thus, $\mathbf{g}\in\mathbb{R}^{936}$. The preprocessing code stores both raw-coordinate and per-frame bounding-box-normalized versions of this descriptor; the geometry dataset used by the fusion experiments supplies the normalized descriptor.
+
+\subsection{Fusion configurations}
+Table~\ref{tab:configs} summarizes the evaluated models. E1 is a four-convolution-block RGB CNN with adaptive average pooling and a fully connected classifier. E2 uses a corresponding four-block CNN on absolute frame differences, followed by temporal mean pooling. E3 uses separate RGB and motion branches, pools each branch temporally, concatenates the resulting 64-dimensional features, and classifies the fused representation. E4 combines a temporally pooled RGB feature with an MLP-encoded geometry vector by concatenation. E5 uses four-block CNN encoders for RGB and motion, an MLP for geometry, temporal mean pooling within the RGB and motion encoders, concatenation of three 128-dimensional vectors, and a classifier. E6 uses RGB and motion CNN encoders that return per-frame 128-dimensional features and an MLP geometry encoder. Three learned scalar gates score the modality features at each RGB time step; a softmax produces input-dependent modality weights. The weighted feature sum is averaged over time and passed to a classifier. The final E6 implementation contains no GRU.
+
+\begin{table}[t]
+\caption{Six evaluated configurations}
+\label{tab:configs}
+\centering\footnotesize
+\begin{tabular}{cll}
+\toprule
+ID & Inputs & Fusion / aggregation \\
+\midrule
+E1 & RGB & Single sampled frame \\
+E2 & Motion & CNN + temporal mean \\
+E3 & RGB + motion & Concatenation after pooling \\
+E4 & RGB + geometry & Feature concatenation \\
+E5 & RGB + motion + geometry & Three-stream concatenation \\
+E6 & RGB + motion + geometry & Adaptive gates + temporal mean \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Training and threshold selection}
+The experiment scripts set random seed 42, batch size 16, a maximum of 30 epochs, AdamW with learning rate $10^{-4}$ and weight decay $10^{-4}$, and early stopping with patience 7. The training scripts also use a ReduceLROnPlateau scheduler for E5 and E6, with factor 0.5 and patience 3, and gradient clipping at a maximum norm of 5.0. Models are selected using validation ACER, and the selected threshold is stored with the best checkpoint. The test set is evaluated using the stored validation threshold; test labels are not used to optimize the threshold.
+
+The threshold grid is not identical across all experiment scripts: E1--E3 use a grid from 0.05 to 0.95 with step 0.01, while E4--E6 use a grid from 0.01 to 0.99 with step 0.01. This implementation difference should be considered when interpreting the comparison and is a candidate for harmonization in future experiments. The checkpoint thresholds and best epochs are listed in Table~\ref{tab:thresholds}.
+
+\subsection{Metrics}
+Attack is treated as the positive class. Accordingly, $FN$ counts attack sequences predicted as REAL, and $FP$ counts REAL sequences predicted as ATTACK. The attack presentation classification error rate (APCER), bona fide presentation classification error rate (BPCER), and average classification error rate (ACER) are
+\begin{align}
+\mathrm{APCER} &= \frac{FN}{FN+TP}\times100\%,\\
+\mathrm{BPCER} &= \frac{FP}{FP+TN}\times100\%,\\
+\mathrm{ACER} &= \frac{\mathrm{APCER}+\mathrm{BPCER}}{2}.
+\end{align}
+Accuracy, precision, recall, and F1-score are also reported using standard confusion-matrix definitions~\cite{sokolova2009}. PAD terminology and the distinction between attack and bona fide presentation errors follow ISO/IEC 30107-3~\cite{iso30107}. ACER is computed here as the arithmetic mean of APCER and BPCER for the reported experiment, following the PAD reporting convention; the exact class-positive mapping is stated explicitly to avoid ambiguity.
+
+\section{Results and Discussion}
+\subsection{Test-set comparison}
+Table~\ref{tab:results} reports the test metrics copied from the experiment result files. E5 achieves the highest accuracy (94.06\%) and F1-score (96.13\%). E6 achieves the lowest ACER (7.52\%), compared with 9.25\% for E3 and 10.55\% for E5. Thus, the best accuracy and the best balance between APCER and BPCER are achieved by different configurations.
+
+\begin{table*}[t]
+\caption{Test-set results for E1--E6 (percent)}
+\label{tab:results}
+\centering\footnotesize
+\begin{tabular}{lrrrrrrr}
+\toprule
+Experiment & Accuracy & Precision & Recall & F1-score & APCER & BPCER & ACER \\
+\midrule
+E1: RGB CNN & 92.02 & 93.18 & 96.34 & 94.74 & 3.66 & 20.69 & 12.17 \\
+E2: Motion CNN & 86.37 & 96.30 & 84.99 & 90.29 & 15.01 & 9.58 & 12.30 \\
+E3: RGB + motion & 92.79 & 95.41 & 94.91 & 95.16 & 5.09 & 13.41 & 9.25 \\
+E4: RGB + geometry & 92.79 & 92.20 & 98.69 & 95.33 & 1.31 & 24.52 & 12.91 \\
+E5: RGB + motion + geometry & \textbf{94.06} & 93.57 & 98.83 & \textbf{96.13} & 1.17 & 19.92 & 10.55 \\
+E6: Adaptive fusion + mean pooling & 93.87 & \textbf{96.43} & 95.30 & 95.86 & 4.70 & 10.34 & \textbf{7.52} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+E4 and E5 obtain low APCER (1.31\% and 1.17\%), meaning that relatively few attack samples are classified as bona fide. However, their BPCER values are higher (24.52\% and 19.92\%), indicating more bona fide samples are rejected. E6 has a higher APCER (4.70\%) but lower BPCER (10.34\%), resulting in the lowest ACER. In biometric applications, both error types matter: falsely accepting an attack and falsely rejecting a genuine user represent different risks.
+
+E2 shows that motion alone is insufficient to achieve the strongest overall result in this setup: it has 86.37\% accuracy and 12.30\% ACER. Combining RGB and motion in E3 reduces ACER to 9.25\%. E4 suggests that geometry can help reduce attack acceptance, but its BPCER is high. E5 achieves the highest accuracy by concatenating the three modality features, while E6's input-dependent weighting improves the average of the two class-specific error rates. These results support using multiple PAD metrics instead of selecting a model by accuracy alone.
+
+\begin{table}[t]
+\caption{Best checkpoint and decision threshold}
+\label{tab:thresholds}
+\centering\footnotesize
+\begin{tabular}{lrr}
+\toprule
+Experiment & Best epoch & Threshold \\
+\midrule
+E1 & 7 & 0.11 \\
+E2 & 14 & 0.86 \\
+E3 & 5 & 0.24 \\
+E4 & 15 & 0.04 \\
+E5 & 6 & 0.05 \\
+E6 & 11 & 0.33 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Confusion-matrix analysis}
+Table~\ref{tab:cm} gives the test confusion-matrix counts. For E6, 36 of 766 attack sequences are classified as REAL, while 27 of 261 REAL sequences are classified as ATTACK. These counts correspond to APCER of 4.70\% and BPCER of 10.34\%, giving ACER of 7.52\%. In E5, only nine attacks are classified as REAL, but 52 bona fide sequences are classified as ATTACK. This explains E5's lower APCER and higher BPCER relative to E6.
+
+\begin{table}[t]
+\caption{Test confusion-matrix counts (attack is positive)}
+\label{tab:cm}
+\centering\footnotesize
+\begin{tabular}{lrrrr}
+\toprule
+Exp. & TN & FP & FN & TP \\
+\midrule
+E1 & 207 & 54 & 28 & 738 \\
+E2 & 236 & 25 & 115 & 651 \\
+E3 & 226 & 35 & 39 & 727 \\
+E4 & 197 & 64 & 10 & 756 \\
+E5 & 209 & 52 & 9 & 757 \\
+E6 & 234 & 27 & 36 & 730 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Web application implementation}
+The trained E6 checkpoint is integrated into a browser-facing application that accesses a live camera, captures an eight-frame sequence, and sends it to the prediction API for analysis. Fig.~\ref{fig:webapp} shows an example result screen from the running application. In this captured test, the interface displays an ATTACK decision with the corresponding predicted probabilities (REAL: 0.96\%; ATTACK: 99.04\%). This screenshot demonstrates that the web interface and inference-result presentation are implemented; it is an illustrative single prediction, not an independent accuracy measurement or evidence that the displayed classification is correct. The offline test metrics and API benchmark are reported separately.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\columnwidth]{web_liveness_result.png}
+    \caption{Browser interface of the web-based liveness detection application using the E6 adaptive RGB--motion--geometry model. The captured example displays an ATTACK prediction.}
+    \label{fig:webapp}
+\end{figure}
+
+\subsection{Limitations and reproducibility considerations}
+The evaluation uses one processed dataset and one subject-disjoint split. It does not establish cross-dataset generalization, robustness to unseen attack instruments, or real-time web-camera performance. Geometry preprocessing removes 42 training sequences, so E4--E6 train on fewer samples than E1--E3. Threshold grids also differ between experiment scripts. Future comparisons should harmonize threshold search and, ideally, repeat training across multiple seeds. The API was benchmarked separately for latency and throughput; however, the current resource samples are not sufficient to establish total application memory or CPU requirements, and GPU/VRAM was not measured. The benchmark also excludes payload encoding and dataset disk reads, so it should not be interpreted as a complete webcam-to-decision latency.
+
+\subsection{API latency and resource benchmark}
+The E6 prediction endpoint was benchmarked with five warm-up requests followed by 50 measured HTTP requests. All 50 measured requests succeeded, with no reported failures. Table~\ref{tab:latency} summarizes the recorded measurements. The mean latency was 190.50 ms, the median (P50) was 175.18 ms, and the 95th-percentile latency was 284.89 ms. The measured throughput was 5.247 requests per second. These values describe the tested API setup only; they are not a guarantee of latency under concurrent users or on other hardware.
+
+The benchmark JSON reports a peak process RSS of approximately 0.70 MB and mean RSS of approximately 0.38 MB, while sampled CPU utilization was 0.0\%. These unusually low resource readings should be interpreted cautiously: the script's process sampling may not fully capture the Python inference process or transient utilization. Therefore, they are reported as raw benchmark output rather than evidence of the complete application's memory footprint or CPU cost. GPU/VRAM was not measured. The benchmark notes also state that payload encoding and dataset disk reads are excluded, so the latency is not a complete camera-to-prediction measurement.
+
+\begin{table}[t]
+\caption{E6 prediction API benchmark}
+\label{tab:latency}
+\centering\footnotesize
+\begin{tabular}{lr}
+\toprule
+Metric & Result \\
+\midrule
+Warm-up requests & 5 \\
+Measured requests & 50 \\
+Successful / failed & 50 / 0 \\
+Mean latency & 190.498 ms \\
+Median latency (P50) & 175.181 ms \\
+95th-percentile latency (P95) & 284.893 ms \\
+Minimum / maximum latency & 151.352 / 340.002 ms \\
+Throughput & 5.247 requests/s \\
+Reported mean / peak RSS & 0.38 / 0.70 MB \\
+Sampled mean / peak CPU & 0.0 / 0.0\% \\
+GPU / VRAM & Not measured \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Conclusion}
+This paper compared six face liveness detection configurations using RGB appearance, frame-difference motion, and facial geometry. On the 1,027-sequence test set, E5 achieved the highest accuracy (94.06\%), whereas E6 with adaptive modality weighting and temporal mean pooling achieved the lowest ACER (7.52\%). E6's APCER of 4.70\% and BPCER of 10.34\% yielded a more balanced error profile than E5, which had lower APCER but higher BPCER. The results show that accuracy alone is insufficient for selecting a PAD model. Future work should harmonize threshold selection, repeat experiments across seeds, evaluate additional datasets, and measure end-to-end inference performance.
+
+% \clearpage
+\begin{thebibliography}{00}
+
+\bibitem{wen2015ida}
+D. Wen, H. Han, and A. K. Jain, ``Face Spoof Detection With Image Distortion Analysis,'' \emph{IEEE Transactions on Information Forensics and Security}, vol. 10, no. 4, pp. 746--761, Apr. 2015, doi: 10.1109/TIFS.2015.2400395.
+
+\bibitem{yu2023survey}
+Z. Yu, Y. Qin, X. Li, C. Zhao, Z. Lei, and G. Zhao, ``Deep Learning for Face Anti-Spoofing: A Survey,'' \emph{IEEE Transactions on Pattern Analysis and Machine Intelligence}, vol. 45, no. 5, pp. 5609--5631, May 2023, doi: 10.1109/TPAMI.2022.3215850.
+
+\bibitem{liu2018aux}
+Y. Liu, A. Jourabloo, and X. Liu, ``Learning Deep Models for Face Anti-Spoofing: Binary or Auxiliary Supervision,'' in \emph{Proc. IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, 2018, pp. 389--398.
+
+\bibitem{yu2020cdcn}
+Z. Yu \emph{et al.}, ``Searching Central Difference Convolutional Networks for Face Anti-Spoofing,'' in \emph{Proc. IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)}, 2020, pp. 5295--5305, doi: 10.1109/CVPR42600.2020.00534.
+
+\bibitem{yang2019stasn}
+X. Yang \emph{et al.}, ``Face Anti-Spoofing: Model Matters, so Does Data,'' in \emph{Proc. IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)}, 2019, pp. 3507--3516.
+
+\bibitem{sun2018temporal}
+Z. Sun, L. Sun, and Q. Li, ``Investigation in Spatial-Temporal Domain for Face Spoof Detection,'' in \emph{Proc. IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)}, 2018.
+
+\bibitem{silva2023spatiotemporal}
+V. L. da Silva, J. L. L\'erida, M. Sarret, M. Valls, and F. Gin\'e, ``Residual Spatiotemporal Convolutional Networks for Face Anti-Spoofing,'' \emph{Journal of Visual Communication and Image Representation}, vol. 91, Art. no. 103744, 2023, doi: 10.1016/j.jvcir.2022.103744.
+
+\bibitem{chang2023geometry}
+C.-J. Chang, Y.-C. Lee, S.-H. Yao, M.-H. Chen, C.-Y. Wang, S.-H. Lai, and T. P.-C. Chen, ``A Closer Look at Geometric Temporal Dynamics for Face Anti-Spoofing,'' in \emph{Proc. IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops}, 2023, pp. 1081--1091, doi: 10.1109/CVPRW59228.2023.00115.
+
+\bibitem{shen2019facebagnet}
+T. Shen, Y. Huang, and Z. Tong, ``FaceBagNet: Bag-Of-Local-Features Model for Multi-Modal Face Anti-Spoofing,'' in \emph{Proc. IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops}, 2019.
+
+\bibitem{yu2020multimodal}
+Z. Yu, Y. Qin, X. Li, Z. Wang, C. Zhao, Z. Lei, and G. Zhao, ``Multi-Modal Face Anti-Spoofing Based on Central Difference Networks,'' in \emph{Proc. IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops}, 2020, pp. 2766--2774, doi: 10.1109/CVPRW50498.2020.00333.
+
+\bibitem{chen2025mmfas}
+G. Chen \emph{et al.}, ``mmFAS: Multimodal Face Anti-Spoofing Using Multi-Level Alignment and Switch-Attention Fusion,'' in \emph{Proc. AAAI Conference on Artificial Intelligence}, vol. 39, no. 1, pp. 58--66, 2025, doi: 10.1609/aaai.v39i1.31980.
+
+\bibitem{zeng2023bandpass}
+D. Zeng, L. Gao, H. Fang, G. Xiang, Y. Feng, and Q. Lu, ``Bandpass Filter Based Dual-Stream Network for Face Anti-Spoofing,'' in \emph{Proc. IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops}, 2023, pp. 6403--6410.
+
+\bibitem{kagglemsumfsd}
+minhtranv, ``MSU-MFSD Processed into Frames, Kaggle, dataset, accessed Oct. 2026. [Online]. Available: \url{https://www.kaggle.com/datasets/minhtranv/msu-mfsd-processed-into-frames}.
+
+\bibitem{sokolova2009}
+M. Sokolova and G. Lapalme, ``A systematic analysis of performance measures for classification tasks,'' \emph{Information Processing \& Management}, vol. 45, no. 4, pp. 427--437, 2009, doi: 10.1016/j.ipm.2009.03.002.
+
+\bibitem{iso30107}
+ISO/IEC, \emph{ISO/IEC 30107-3:2023 Information Technology---Biometric Presentation Attack Detection---Part 3: Testing and Reporting}. Geneva, Switzerland: International Organization for Standardization, 2023.
+
+\end{thebibliography}
+
+\end{document}
