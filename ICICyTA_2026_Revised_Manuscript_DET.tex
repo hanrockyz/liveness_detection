@@ -1,0 +1,230 @@
+\documentclass[a4paper,conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{array}
+\usepackage{placeins}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\begin{document}
+\title{Web-Based Liveness Detection Using Adaptive Temporal Multi-Cue Feature Fusion}
+
+\author{\IEEEauthorblockN{Hanrocky Halim}
+\IEEEauthorblockA{\textit{School of Computing, Telkom University}\
+Bandung, Indonesia\\
+hanrocky@student.telkomuniversity.ac.id}}
+
+\maketitle
+\begin{abstract}
+Face presentation attack detection (PAD) protects face authentication systems against printed photographs and replayed videos. This paper compares six video-based liveness configurations using RGB appearance, inter-frame motion, and facial landmark geometry on a processed MSU Mobile Face Spoofing Database (MSU-MFSD) split. The configurations comprise RGB CNN, motion CNN, RGB--motion fusion, RGB--geometry fusion, concatenation-based three-stream fusion, and adaptive three-stream fusion with temporal mean pooling. A subject-disjoint protocol and common validation-based threshold selection are used. On 1,027 test sequences, E5 achieves the highest accuracy (94.06\%) and lowest maximum species-level APCER (1.83\%), whereas E6 achieves the lowest BPCER (10.34\%) and species-aware ACER (9.38\%). Subject-level bootstrap intervals do not establish a reliable difference in accuracy or ACER between E5 and E6. All six models were trained once with seed 42; repeated-seed variability and cross-dataset generalization are not established. DET curves further illustrate the threshold-dependent trade-off between bona fide rejection and worst-case attack acceptance.
+\end{abstract}
+\begin{IEEEkeywords}
+face presentation attack detection, face liveness detection, multimodal fusion, facial geometry, temporal aggregation, MSU-MFSD
+\end{IEEEkeywords}
+
+\section{Introduction}
+Face recognition is used in identity verification and access control, but a recognition pipeline can be deceived by a printed photograph or replayed video of a genuine user. Face presentation attack detection (PAD) distinguishes bona fide presentations from presentation attacks. The MSU Mobile Face Spoofing Database (MSU-MFSD) supports research on print and replay attacks in mobile face authentication scenarios \cite{wen2015ida}.
+
+RGB appearance encodes texture and image-quality cues, temporal differences describe changes between adjacent frames, and facial landmark geometry provides a representation of facial structure and movement. Prior work has investigated geometric temporal dynamics \cite{chang2023geometry} and multimodal feature alignment and fusion \cite{chen2025mmfas}. These studies motivate a controlled comparison of appearance, frame-difference motion, and landmark-derived geometry.
+
+The research question is: \emph{How do RGB appearance, temporal motion, facial-landmark geometry, and their fusion strategies affect the APCER--BPCER trade-off and model ranking under consistent validation-based threshold selection in a subject-disjoint MSU-MFSD evaluation?} The contributions are: (1) a comparison of six compact configurations; (2) an evaluation of concatenation-based fusion against adaptive modality weighting with temporal mean pooling; and (3) a metric-sensitive analysis using species-level APCER, BPCER, ACER, and subject-level bootstrap intervals. This is an intra-dataset study and does not establish cross-dataset generalization.
+
+\section{Related Work}
+\subsection{CNN-based face presentation attack detection}
+Deep learning has become a dominant approach to face anti-spoofing because CNNs can learn discriminative visual cues beyond manually designed texture descriptors; the broader design space, including auxiliary supervision, domain generalization, and multimodal sensing, is reviewed by Yu \emph{et al.}~\cite{yu2023survey}. Wen \emph{et al.} introduced MSU-MFSD and used image distortion analysis to detect print and replay attacks~\cite{wen2015ida}. Later methods explored stronger visual representations. Liu \emph{et al.} combined binary classification with auxiliary depth and rPPG supervision, arguing that auxiliary signals can guide networks toward more informative spoof cues~\cite{liu2018aux}. Yu \emph{et al.} proposed central-difference convolutions to capture intensity and gradient patterns, and reported evaluations across multiple benchmarks~\cite{yu2020cdcn}. These methods provide context for E1, the RGB-only CNN baseline in this study. Unlike CDCN or auxiliary-supervision systems, E1 uses a compact conventional CNN and classifies the first sampled frame; therefore, it is a controlled baseline rather than a direct reimplementation of a state-of-the-art architecture. However, a frame-level representation cannot explicitly model
+temporal variations or facial geometric consistency, motivating
+the investigation of complementary motion and geometry cues
+in subsequent experiments.
+
+\subsection{Temporal and motion-based cues}
+A single image can contain texture, reflection, moir\'e, and border cues, but temporal evidence can capture changes across a video. Yang \emph{et al.} proposed the Spatio-Temporal Anti-Spoofing Network (STASN), combining local spatial and global temporal cues~\cite{yang2019stasn}. Sun \emph{et al.} compared CNN, 3D convolution, CNN--LSTM, Conv-LSTM, and optical-flow-based streams, showing the relevance of explicit temporal modelling and stream fusion~\cite{sun2018temporal}. Residual spatiotemporal convolutional networks were also investigated as end-to-end video models for FAS~\cite{silva2023spatiotemporal}. These approaches are more temporally expressive than the frame-difference and mean-pooling design used here. E2 isolates absolute adjacent-frame differences, while E3 combines that motion stream with RGB appearance. Under the conventional aggregate APCER calculation, E2 and E3
+achieve ACER values of 12.30\% and 9.25\%, respectively.
+When considering the maximum APCER across attack species,
+their species-aware ACER values are 18.90\% and 12.55\%,
+respectively. This comparison suggests that motion features
+are more useful in combination with RGB than alone in this
+implementation; it does not establish that simple frame
+differences outperform optical flow or learned
+spatiotemporal architectures generally.
+
+\subsection{Facial geometry and multimodal fusion}
+Chang \emph{et al.} proposed Geometry-Aware Interaction Network (GAIN), using dense facial landmarks and spatiotemporal graph convolution to model normal versus abnormal presentation dynamics~\cite{chang2023geometry}. Their graph-based temporal representation differs from the 936-dimensional mean landmark-displacement descriptor and MLP used in E4--E6. The latter is a lightweight geometry feature, not a reproduction of GAIN. In our results, E4 achieves an aggregate APCER of 1.31\% but has a BPCER of 24.52\%. When the maximum APCER across attack species is considered, the APCER increases to 2.80\%. This illustrates that geometry fusion changes the error trade-off rather than improving every metric.
+
+Multimodal FAS has also combined RGB with depth and infrared data. FaceBagNet uses multi-stream CNNs and modality-feature erasing~\cite{shen2019facebagnet}; Yu \emph{et al.} extended central-difference networks to RGB, depth, and infrared modalities~\cite{yu2020multimodal}; and mmFAS investigates multi-level alignment with switch-attention fusion~\cite{chen2025mmfas}. A separate dual-stream method fuses original images with bandpass-filtered representations~\cite{zeng2023bandpass}. These methods demonstrate that fusion design and complementary cues are active research directions, but their sensor inputs and protocols differ from this study. E5 concatenates RGB, motion, and landmark geometry features, whereas E6 uses learned scalar gates to weight these three features before temporal mean pooling. E5 yields the highest accuracy (94.06\%) and F1-score (96.13\%), whereas E6 achieves the lowest species-aware ACER (9.38\%) and BPCER (10.34\%). These results indicate different operating characteristics: E5 provides stronger overall classification accuracy and lower attack acceptance,
+while E6 produces a more balanced error trade-off under the species-aware ACER criterion. Therefore, adaptive weighting shows potential in balancing complementary cues in this experiment, but the result should not be interpreted as a general superiority claim over attention-based fusion or
+sensor-level multimodal systems.
+
+\subsection{Evaluation and reporting context}
+ISO/IEC 30107-3 provides testing and reporting considerations for biometric PAD \cite{iso30107}. Accordingly, this paper reports APCER and BPCER separately and defines a species-aware ACER using the maximum APCER among evaluated attack species. Standard classification metrics are also reported \cite{sokolova2009}. The DET analysis complements the operating-point metrics by showing error trade-offs over a range of decision thresholds.
+
+\section{Methodology}
+\subsection{Dataset and subject-disjoint protocol}
+Experiments use the Kaggle release ``MSU-MFSD Processed into Frames'' \cite{kagglemsumfsd}; the underlying database is described by Wen \emph{et al.} \cite{wen2015ida}. Labels are 0 for REAL (bona fide) and 1 for ATTACK. Each sequence contains eight frames sampled with stride five; each frame is resized to $112\times112$. The split is subject-disjoint: 12 training subjects, three validation subjects, and 20 test subjects. Validation contains 160 sequences (42 REAL, 118 ATTACK); test contains 1,027 sequences (261 REAL, 766 ATTACK), including iPad replay, iPhone replay, and printed-photo attacks.
+
+Non-geometry training contains 621 sequences. Geometry preprocessing retains 579 because sequences with fewer than six valid landmark frames are excluded. All 42 excluded training sequences are REAL: the REAL count decreases from 159 to 117, while the ATTACK count remains 462. This changes both sample size and class composition, confounding comparisons involving E4--E6. All 1,027 test sequences have eight valid geometry frames; missing-geometry fallback at test time was not evaluated.
+
+\subsection{RGB and motion inputs}
+E1 classifies the first sampled RGB frame. E2 computes absolute adjacent-frame differences,
+\begin{equation}
+\mathbf{M}_t=|\mathbf{I}_{t+1}-\mathbf{I}_t|,\quad t=1,\ldots,7,
+\end{equation}
+and applies a CNN followed by temporal mean pooling. E3 uses separate RGB and motion branches, pools each branch over time, concatenates the pooled features, and classifies the fused representation.
+
+\subsection{Facial geometry descriptor}
+Facial landmarks are extracted using MediaPipe Face Landmarker. Each frame provides 468 two-dimensional points. Missing detections are interpolated, and training sequences are retained when at least six of eight frames contain valid detections. The resulting normalized sequence-level descriptor has 936 dimensions. The original implementation describes this descriptor as the mean adjacent-frame landmark displacement:
+\begin{equation}
+\mathbf{g}=\operatorname{vec}\left(\frac{1}{T-1}\sum_{t=1}^{T-1}(\mathbf{P}_{t+1}-\mathbf{P}_t)\right),
+\label{eq:geometry}
+\end{equation}
+where $T=8$ and $\mathbf{P}_t\in\mathbb{R}^{468\times2}$. This compact descriptor is not a graph-convolution representation and is not a reproduction of GAIN \cite{chang2023geometry}.
+
+\subsection{Fusion configurations}
+E1 is an RGB CNN; E2 is a motion CNN; E3 combines RGB and motion by feature concatenation; E4 combines RGB and geometry; E5 concatenates RGB, motion, and geometry; E6 uses adaptive modality weighting and temporal mean pooling. In E6, the RGB branch produces eight temporal feature vectors. The motion branch produces seven vectors; a zero vector is prepended to align motion with the eight RGB positions. The sequence-level 936-dimensional geometry descriptor is projected and repeated across the eight positions. At each position, learned modality scores are softmax-normalized:
+\begin{equation}
+\alpha_{t,m}=\frac{\exp(s_{t,m})}{\sum_{k\in\{r,m,g\}}\exp(s_{t,k})},
+\end{equation}
+and the modalities are fused as
+\begin{equation}
+\mathbf{z}_t=\sum_{m\in\{r,m,g\}}\alpha_{t,m}\mathbf{h}_{t,m},
+\qquad \bar{\mathbf{z}}=\frac{1}{8}\sum_{t=1}^{8}\mathbf{z}_t.
+\end{equation}
+
+The pooled vector is passed to the classifier. The final E6 implementation uses mean pooling, not a GRU.
+
+
+\begin{table}[t]
+\caption{Six evaluated configurations}\label{tab:configs}\centering\footnotesize
+\begin{tabular}{cll}\toprule
+ID & Inputs & Fusion / aggregation\\\midrule
+E1 & RGB & First sampled frame\\
+E2 & Motion & CNN + temporal mean\\
+E3 & RGB + motion & Concatenation after pooling\\
+E4 & RGB + geometry & Feature concatenation\\
+E5 & RGB + motion + geometry & Three-stream concatenation\\
+E6 & RGB + motion + geometry & Adaptive weights + temporal mean\\
+\bottomrule\end{tabular}
+\end{table}
+
+\subsection{Training and threshold selection}
+All six experiments were trained once using seed 42. The common training setup used batch size 16, maximum 30 epochs, AdamW with learning rate $10^{-4}$ and weight decay $10^{-4}$, early stopping patience 7, and gradient clipping at 5.0. Validation prediction exports were re-evaluated on a common threshold grid from 0.01 to 0.99 in increments of 0.01. The selected threshold minimizes validation species-aware ACER:
+\begin{equation}
+\mathrm{ACER}_{val}=\frac{\max_s\mathrm{APCER}_{val,s}+\mathrm{BPCER}_{val}}{2}.
+\end{equation}
+The selected thresholds are E1=0.11, E2=0.82, E3=0.24, E4=0.04, E5=0.05, and E6=0.33. Each threshold is fixed before test evaluation; no test threshold tuning is performed. Validation contains only three subjects, so the selected operating points may be sensitive to this sample.
+
+
+
+
+
+\subsection{Metrics}
+Attack is the positive class. APCER is computed separately for each attack species; BPCER is the proportion of bona fide presentations classified as attacks. We define $\mathrm{APCER}_{max}=\max_s\mathrm{APCER}_s$ and
+\begin{equation}
+\mathrm{ACER}_{species}=\frac{\mathrm{APCER}_{max}+\mathrm{BPCER}}{2}.
+\end{equation}
+Accuracy, precision, recall, and F1-score use standard confusion-matrix definitions \cite{sokolova2009}. This species-aware definition is explicit and differs from a pooled APCER over all attacks.
+
+\section{Results and Discussion}
+\subsection{Test-set comparison}
+Table~\ref{tab:results} reports results at validation-selected thresholds. E5 obtains the highest accuracy and F1-score; E6 obtains the lowest BPCER and species-aware ACER. E5 correctly classifies 966 sequences and E6 classifies 964, a difference of only two test sequences; this is not evidence of statistically established superiority.
+
+\begin{table*}[t]
+\caption{Test-set results at validation-selected thresholds (percent)}\label{tab:results}\centering\footnotesize
+\begin{tabular}{lrrrrrrrr}\toprule
+Model & $\tau$ & Acc. & Prec. & Recall & F1 & Max APCER & BPCER & ACER\\\midrule
+E1 & .11 & 92.02 & 93.18 & 96.34 & 94.74 & 6.54 & 20.69 & 13.62\\
+E2 & .82 & 88.41 & 95.24 & 88.90 & 91.96 & 24.77 & 13.03 & 18.90\\
+E3 & .24 & 92.79 & 95.41 & 94.91 & 95.16 & 11.68 & 13.41 & 12.55\\
+E4 & .04 & 92.79 & 92.20 & 98.69 & 95.33 & 2.80 & 24.52 & 13.66\\
+E5 & .05 & \textbf{94.06} & 93.57 & 98.83 & \textbf{96.13} & \textbf{1.83} & 19.92 & 10.88\\
+E6 & .33 & 93.87 & \textbf{96.43} & 95.30 & 95.86 & 8.41 & \textbf{10.34} & \textbf{9.38}\\
+\bottomrule\end{tabular}
+\end{table*}
+
+E5 has the lowest maximum species APCER (1.83\%) but BPCER of 19.92\%. E6 has maximum APCER of 8.41\% but BPCER of 10.34\%, yielding the lowest species-aware ACER (9.38\%). Model selection is therefore metric-dependent: E5 is preferable when minimizing worst-species attack acceptance is prioritized, while E6 has the more favorable observed bona fide error and ACER.
+
+\begin{table}[t]
+\caption{Species-level APCER (percent)}\label{tab:species}\centering\footnotesize
+\begin{tabular}{lrrr}\toprule
+Model & iPad replay & iPhone replay & Printed photo\\\midrule
+E1 & 2.51 & 2.56 & 6.54\\
+E2 & 9.32 & 2.20 & 24.77\\
+E3 & 2.51 & 2.56 & 11.68\\
+E4 & 0.00 & 1.47 & 2.80\\
+E5 & 1.43 & 1.83 & 0.00\\
+E6 & 2.15 & 4.40 & 8.41\\
+\bottomrule\end{tabular}
+\end{table}
+
+\subsection{Uncertainty and paired comparison}
+A subject-level cluster bootstrap resampled the 20 test subjects with replacement, retaining all sequence observations for each sampled subject. It used 20,000 replicates, fixed validation thresholds, and percentile 95\% intervals. ACER intervals were E1 7.46--22.04\%, E2 12.51--25.81\%, E3 6.77--19.26\%, E4 6.80--22.58\%, E5 6.17--16.63\%, and E6 3.91--17.84\%. In the paired subject bootstrap, E5 minus E6 accuracy was +0.19 percentage points (95\% CI: -2.84 to +3.38) and ACER difference was +1.50 points (CI: -4.60 to +6.88); both intervals include zero. E5 had lower maximum APCER by 6.58 points (CI: -14.14 to -1.43), while E6 had lower BPCER by 9.58 points (E5 minus E6 CI: +1.93 to +18.04). These intervals quantify test-subject sampling conditional on seed-42 checkpoints, not training-seed variability.
+
+
+\subsection{Detection error trade-off analysis}
+To examine performance across decision thresholds rather than at a single operating point, Fig.~\ref{fig:det} presents detection error trade-off (DET) curves for E1--E6. For a threshold $\tau$, a bona fide sequence is incorrectly rejected when its attack probability is at least $\tau$, giving BPCER. For each attack species $s$, an attack is incorrectly accepted when its attack probability is below $\tau$, giving $\mathrm{APCER}_s$. The vertical error measure is the worst-case value, $\mathrm{APCER}_{max}=\max_s\mathrm{APCER}_s$, over iPad replay, iPhone replay, and printed-photo attacks. Thus, the figure does not hide a weak attack species inside a pooled attack average.
+
+Both axes use the inverse standard-normal (probit) scale, which is the conventional DET representation; lower-left positions indicate a more favorable joint error trade-off. The curves are generated by sweeping the test prediction threshold from 0.00 to 1.00 in increments of 0.01. Circle markers show the test-set operating points obtained using the thresholds selected on the validation set (E1=0.11, E2=0.82, E3=0.24, E4=0.04, E5=0.05, and E6=0.33). These markers are not selected by optimizing test performance. E5 operates at the lowest maximum species APCER (1.83\%) but with a higher BPCER (19.92\%); E6 has a lower BPCER (10.34\%) with a higher maximum species APCER (8.41\%). E2 exhibits the largest maximum species APCER at its selected operating point (24.77\%). The DET curves therefore make the security--convenience trade-off and threshold sensitivity visible across all six configurations.
+
+For display on the probit axes, rates of exactly zero or one are clipped to 0.1\% and 99.9\%, respectively, because the inverse-normal transform is unbounded at those endpoints. This display-only clipping does not change the error-rate calculations or the reported operating-point metrics.
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+width=\columnwidth,height=0.86\columnwidth,
+xlabel={BPCER (\%)},ylabel={Maximum species APCER (\%)},
+xmin=-3.0902,xmax=3.0902,ymin=-3.0902,ymax=3.0902,
+xtick={-3.0902,-2.5758,-2.3263,-2.0537,-1.6449,-1.2816,-0.8416,-0.2533,0,0.2533,0.8416,1.2816,1.6449,2.3263,3.0902},
+ytick={-3.0902,-2.5758,-2.3263,-2.0537,-1.6449,-1.2816,-0.8416,-0.2533,0,0.2533,0.8416,1.2816,1.6449,2.3263,3.0902},
+xticklabels={0.1,0.5,1,2,5,10,20,40,50,60,80,90,95,99,99.9},
+yticklabels={0.1,0.5,1,2,5,10,20,40,50,60,80,90,95,99,99.9},
+grid=major,tick label style={font=\scriptsize},label style={font=\footnotesize},
+legend style={font=\scriptsize,at={(0.02,0.98)},anchor=north west,draw=none,fill=white,fill opacity=0.85,text opacity=1},
+legend columns=3,clip=true]
+\addplot[blue,thick] coordinates {(3.0902,-3.0902) (1.3059,-3.0902) (0.4413,-3.0902) (0.0625,-2.0816) (-0.1786,-1.9887) (-0.2474,-1.9491) (-0.3174,-1.9491) (-0.3889,-1.9491) (-0.4733,-1.9491) (-0.5167,-1.7819) (-0.6896,-1.5485) (-0.8172,-1.5108) (-0.9298,-1.4751) (-0.9751,-1.4089) (-1.0555,-1.4089) (-1.0724,-1.3779) (-1.1434,-1.3483) (-1.1621,-1.3198) (-1.2206,-1.3198) (-1.2621,-1.2657) (-1.2621,-1.2401) (-1.2621,-1.2401) (-1.2621,-1.2152) (-1.2837,-1.1447) (-1.2837,-1.1007) (-1.3059,-1.1007) (-1.3288,-1.0795) (-1.3768,-1.0795) (-1.3768,-1.0795) (-1.3768,-1.0587) (-1.4020,-1.0587) (-1.4020,-1.0587) (-1.4020,-1.0587) (-1.4553,-1.0186) (-1.4553,-0.9800) (-1.4835,-0.9428) (-1.5130,-0.8893) (-1.5130,-0.8721) (-1.5439,-0.8551) (-1.5439,-0.8383) (-1.5764,-0.8218) (-1.6467,-0.8218) (-1.6852,-0.8218) (-1.6852,-0.8218) (-1.6852,-0.7854) (-1.6852,-0.7729) (-1.6852,-0.7243) (-1.6852,-0.6890) (-1.6852,-0.6659) (-1.6852,-0.6431) (-1.7263,-0.5986) (-1.7263,-0.5445) (-1.7263,-0.5128) (-1.7263,-0.4714) (-1.7706,-0.4107) (-1.7706,-0.3223) (-1.7706,-0.2838) (-1.7706,-0.2647) (-1.7706,-0.2363) (-1.7706,-0.2081) (-1.8186,-0.1894) (-1.8186,-0.1428) (-1.8186,-0.1243) (-1.8186,-0.1150) (-1.8186,-0.0781) (-1.8186,-0.0505) (-1.8186,-0.0230) (-1.8713,-0.0138) (-1.8713,-0.0138) (-1.9297,0.0046) (-2.0715,0.0138) (-2.2736,0.0321) (-2.2736,0.0781) (-2.6666,0.1058) (-2.6666,0.1335) (-2.6666,0.1894) (-3.0902,0.2269) (-3.0902,0.2647) (-3.0902,0.2934) (-3.0902,0.3223) (-3.0902,0.3710) (-3.0902,0.4510) (-3.0902,0.5233) (-3.0902,0.5339) (-3.0902,0.5768) (-3.0902,0.6207) (-3.0902,0.6774) (-3.0902,0.7007) (-3.0902,0.7124) (-3.0902,0.7363) (-3.0902,0.7606) (-3.0902,0.7854) (-3.0902,0.9034) (-3.0902,1.0201) (-3.0902,1.1176) (-3.0902,1.3770) (-3.0902,1.5068) (-3.0902,2.3516) (-3.0902,3.0902) (-3.0902,3.0902) (-3.0902,3.0902)};\addlegendentry{E1}
+\addplot[only marks,mark=*,mark size=2.3pt,mark options={fill=blue,draw=black},forget plot] coordinates {(-0.8172,-1.5108)};
+\addplot[BurntOrange,thick] coordinates {(3.0902,-3.0902) (1.5130,-2.5991) (1.1072,-2.3516) (0.8582,-2.1968) (0.6655,-2.1968) (0.5724,-2.0816) (0.4519,-2.0816) (0.3993,-2.0816) (0.3786,-1.9887) (0.3275,-1.9887) (0.2772,-1.9887) (0.2474,-1.9887) (0.2375,-1.9887) (0.2080,-1.9887) (0.1786,-1.9105) (0.1494,-1.9105) (0.1300,-1.9105) (0.0914,-1.8424) (0.0721,-1.8424) (0.0721,-1.8424) (0.0432,-1.8424) (0.0432,-1.8424) (0.0144,-1.8424) (-0.0144,-1.8424) (-0.0336,-1.8424) (-0.0625,-1.8424) (-0.0721,-1.8424) (-0.1010,-1.7819) (-0.1010,-1.7819) (-0.1203,-1.7273) (-0.1300,-1.7273) (-0.1689,-1.7273) (-0.1786,-1.5886) (-0.1786,-1.5886) (-0.1884,-1.5886) (-0.2178,-1.5886) (-0.2178,-1.5485) (-0.2375,-1.5485) (-0.2872,-1.5485) (-0.2872,-1.5485) (-0.2972,-1.5485) (-0.2972,-1.5485) (-0.3073,-1.4751) (-0.3376,-1.4412) (-0.3580,-1.4412) (-0.3683,-1.4089) (-0.3786,-1.3779) (-0.3786,-1.3198) (-0.3889,-1.3198) (-0.3993,-1.2657) (-0.4307,-1.2152) (-0.4307,-1.2152) (-0.4413,-1.2152) (-0.4733,-1.2152) (-0.4733,-1.1910) (-0.4840,-1.1447) (-0.5388,-1.1447) (-0.5499,-1.1447) (-0.5838,-1.1447) (-0.6067,-1.1447) (-0.6183,-1.1447) (-0.6299,-1.1007) (-0.6417,-1.1007) (-0.6417,-1.0587) (-0.6655,-1.0384) (-0.6775,-1.0384) (-0.7142,-0.9991) (-0.7519,-0.9800) (-0.7647,-0.9800) (-0.8307,-0.9612) (-0.8582,-0.9428) (-0.8582,-0.9247) (-0.8863,-0.9247) (-0.9006,-0.9069) (-0.9298,-0.8721) (-0.9447,-0.8721) (-0.9907,-0.8721) (-1.0065,-0.8383) (-1.0389,-0.8383) (-1.0555,-0.8054) (-1.0555,-0.7735) (-1.0897,-0.7422) (-1.1251,-0.6819) (-1.1621,-0.5957) (-1.1811,-0.5137) (-1.2621,-0.4740) (-1.3059,-0.4609) (-1.3288,-0.3715) (-1.3768,-0.2727) (-1.4020,-0.2124) (-1.4553,-0.0821) (-1.4835,0.0234) (-1.5439,0.0821) (-1.6105,0.2606) (-1.6105,0.4094) (-1.7263,0.5406) (-1.7706,0.6382) (-1.9297,0.8054) (-2.1616,1.0384) (-2.6666,1.6314) (-3.0902,3.0902)};\addlegendentry{E2}
+\addplot[only marks,mark=*,mark size=2.3pt,mark options={fill=BurntOrange,draw=black},forget plot] coordinates {(-1.1251,-0.6819)};
+\addplot[ForestGreen,thick] coordinates {(3.0902,-3.0902) (3.0902,-3.0902) (1.8713,-3.0902) (1.3768,-3.0902) (1.0555,-3.0902) (0.8582,-3.0902) (0.6417,-3.0902) (0.4949,-3.0902) (0.3376,-3.0902) (0.1203,-3.0902) (0.0048,-3.0902) (-0.0914,-2.3516) (-0.1689,-2.3516) (-0.2972,-2.1968) (-0.3580,-2.0816) (-0.4733,-1.9105) (-0.6067,-1.7819) (-0.7019,-1.7273) (-0.7647,-1.5485) (-0.8444,-1.4412) (-0.9298,-1.3779) (-0.9447,-1.3779) (-1.0065,-1.3198) (-1.0897,-1.2401) (-1.1072,-1.1910) (-1.1434,-1.1675) (-1.1811,-1.1007) (-1.2621,-1.0384) (-1.2621,-1.0186) (-1.2837,-0.9612) (-1.3288,-0.9069) (-1.3288,-0.8721) (-1.3288,-0.8218) (-1.3288,-0.8054) (-1.3288,-0.7422) (-1.3288,-0.7269) (-1.3288,-0.7117) (-1.3288,-0.7117) (-1.3288,-0.6967) (-1.3288,-0.6819) (-1.3288,-0.6819) (-1.3524,-0.6819) (-1.3768,-0.6819) (-1.3768,-0.6526) (-1.4281,-0.6382) (-1.5439,-0.6239) (-1.5439,-0.6097) (-1.5764,-0.5817) (-1.5764,-0.5679) (-1.6467,-0.5679) (-1.6852,-0.5406) (-1.7263,-0.5271) (-1.7706,-0.4609) (-1.8186,-0.4479) (-2.1616,-0.3841) (-2.2736,-0.3465) (-2.2736,-0.3094) (-2.4246,-0.2727) (-2.6666,-0.2485) (-2.6666,-0.1529) (-3.0902,-0.0703) (-3.0902,-0.0234) (-3.0902,0.0586) (-3.0902,0.1056) (-3.0902,0.2124) (-3.0902,0.3465) (-3.0902,0.4479) (-3.0902,0.5406) (-3.0902,0.6239) (-3.0902,0.8218) (-3.0902,1.0795) (-3.0902,1.2657) (-3.0902,1.5485) (-3.0902,1.5886) (-3.0902,1.9105) (-3.0902,2.0816) (-3.0902,2.3516) (-3.0902,3.0902) (-3.0902,3.0902) (-3.0902,3.0902) (-3.0902,3.0902) (-3.0902,3.0902) (-3.0902,3.0902) (-3.0902,3.0902) (-3.0902,3.0902) (-3.0902,3.0902) (-3.0902,3.0902) (-3.0902,3.0902) (-3.0902,3.0902) (-3.0902,3.0902) (-3.0902,3.0902) (-3.0902,3.0902) (-3.0902,3.0902) (-3.0902,3.0902) (-3.0902,3.0902) (-3.0902,3.0902) (-3.0902,3.0902) (-3.0902,3.0902) (-3.0902,3.0902) (-3.0902,3.0902) (-3.0902,3.0902)};\addlegendentry{E3}
+\addplot[only marks,mark=*,mark size=2.3pt,mark options={fill=ForestGreen,draw=black},forget plot] coordinates {(-1.1072,-1.1910)};
+\addplot[Red,thick] coordinates {(3.0902,-3.0902) (-0.1203,-1.9887) (-0.5058,-1.9887) (-0.6417,-1.9887) (-0.6896,-1.9105) (-0.7907,-1.6774) (-0.8172,-1.5886) (-0.9006,-1.5485) (-0.9751,-1.5108) (-1.0389,-1.5108) (-1.1434,-1.4751) (-1.2007,-1.4751) (-1.2206,-1.4751) (-1.2411,-1.4751) (-1.2411,-1.4412) (-1.2621,-1.4412) (-1.2837,-1.4412) (-1.3288,-1.4261) (-1.4020,-1.3770) (-1.4281,-1.3537) (-1.4281,-1.3537) (-1.4553,-1.3092) (-1.4835,-1.2671) (-1.4835,-1.2671) (-1.5130,-1.2401) (-1.6105,-1.2152) (-1.6105,-1.1890) (-1.6105,-1.1526) (-1.6105,-1.1349) (-1.6105,-1.1224) (-1.6105,-1.0795) (-1.6467,-1.0587) (-1.6467,-1.0384) (-1.6467,-1.0186) (-1.6852,-1.0186) (-1.6852,-1.0186) (-1.6852,-1.0186) (-1.6852,-0.9991) (-1.6852,-0.9991) (-1.6852,-0.9991) (-1.6852,-0.9991) (-1.7263,-0.9800) (-1.7263,-0.9748) (-1.7263,-0.9601) (-1.7263,-0.9314) (-1.7263,-0.9034) (-1.7263,-0.9034) (-1.7263,-0.8897) (-1.7263,-0.8627) (-1.7706,-0.8627) (-1.7706,-0.8364) (-1.8186,-0.7729) (-1.8186,-0.7243) (-1.8186,-0.7007) (-1.8713,-0.6890) (-1.8713,-0.6774) (-1.8713,-0.6774) (-1.9297,-0.6774) (-2.0715,-0.6659) (-2.1616,-0.6431) (-2.1616,-0.6207) (-2.2736,-0.6096) (-2.2736,-0.5986) (-2.2736,-0.5876) (-2.2736,-0.5552) (-2.2736,-0.5233) (-2.2736,-0.5128) (-2.4246,-0.5024) (-2.4246,-0.4920) (-2.4246,-0.4920) (-2.6666,-0.4612) (-2.6666,-0.4107) (-2.6666,-0.4007) (-2.6666,-0.3710) (-2.6666,-0.3417) (-2.6666,-0.3417) (-2.6666,-0.3223) (-2.6666,-0.2743) (-2.6666,-0.2647) (-3.0902,-0.2458) (-3.0902,-0.2269) (-3.0902,-0.1894) (-3.0902,-0.1614) (-3.0902,-0.1150) (-3.0902,-0.0966) (-3.0902,-0.0689) (-3.0902,-0.0413) (-3.0902,0.0230) (-3.0902,0.0689) (-3.0902,0.1335) (-3.0902,0.1614) (-3.0902,0.1894) (-3.0902,0.2552) (-3.0902,0.2934) (-3.0902,0.3417) (-3.0902,0.3908) (-3.0902,0.5024) (-3.0902,0.6431) (-3.0902,1.1006) (-3.0902,1.6325) (-3.0902,3.0902)};\addlegendentry{E4}
+\addplot[only marks,mark=*,mark size=2.3pt,mark options={fill=Red,draw=black},forget plot] coordinates {(-0.6896,-1.9105)};
+\addplot[Violet,thick] coordinates {(3.0902,-3.0902) (0.4840,-3.0902) (-0.2474,-3.0902) (-0.5277,-3.0902) (-0.7519,-2.2907) (-0.8444,-2.0899) (-1.0065,-1.8389) (-1.0555,-1.7912) (-1.1434,-1.7912) (-1.2621,-1.7473) (-1.3524,-1.7473) (-1.4281,-1.7473) (-1.4553,-1.7065) (-1.4835,-1.6684) (-1.4835,-1.6684) (-1.4835,-1.6325) (-1.5130,-1.6325) (-1.5439,-1.6325) (-1.5439,-1.5886) (-1.5439,-1.5485) (-1.5439,-1.5485) (-1.5439,-1.5485) (-1.5439,-1.5485) (-1.5439,-1.5108) (-1.5439,-1.4751) (-1.5439,-1.4412) (-1.5439,-1.4089) (-1.5439,-1.3483) (-1.5764,-1.3198) (-1.5764,-1.2923) (-1.5764,-1.2923) (-1.5764,-1.2657) (-1.5764,-1.2401) (-1.5764,-1.2401) (-1.5764,-1.2152) (-1.5764,-1.2152) (-1.5764,-1.2152) (-1.5764,-1.2152) (-1.5764,-1.2152) (-1.5764,-1.1910) (-1.5764,-1.1447) (-1.5764,-1.1224) (-1.5764,-1.1007) (-1.5764,-1.0795) (-1.5764,-1.0795) (-1.5764,-1.0587) (-1.5764,-1.0186) (-1.5764,-0.9991) (-1.5764,-0.9247) (-1.5764,-0.9247) (-1.5764,-0.9247) (-1.5764,-0.9069) (-1.5764,-0.8551) (-1.5764,-0.8383) (-1.6105,-0.7979) (-1.6105,-0.7854) (-1.6105,-0.7729) (-1.6105,-0.7606) (-1.6105,-0.7243) (-1.6467,-0.7243) (-1.6467,-0.7007) (-1.7263,-0.6545) (-1.7263,-0.6207) (-1.7263,-0.5986) (-1.7263,-0.5876) (-1.7263,-0.5876) (-1.7706,-0.5659) (-1.7706,-0.5445) (-1.8186,-0.5445) (-1.8186,-0.5445) (-1.8713,-0.5339) (-1.8713,-0.5233) (-1.8713,-0.5128) (-1.8713,-0.4920) (-1.8713,-0.4920) (-1.8713,-0.4612) (-1.8713,-0.4612) (-1.8713,-0.4408) (-1.8713,-0.4107) (-1.8713,-0.4107) (-1.8713,-0.3908) (-1.8713,-0.3809) (-1.8713,-0.3514) (-1.8713,-0.2838) (-1.9297,-0.2838) (-1.9297,-0.2269) (-1.9956,-0.2175) (-1.9956,-0.2175) (-1.9956,-0.1987) (-1.9956,-0.1707) (-1.9956,-0.1410) (-2.1616,-0.0689) (-2.1616,-0.0138) (-2.2736,0.0703) (-2.4246,0.1707) (-2.6666,0.2743) (-3.0902,0.3514) (-3.0902,0.4612) (-3.0902,0.6545) (-3.0902,1.1006) (-3.0902,3.0902)};\addlegendentry{E5}
+\addplot[only marks,mark=*,mark size=2.3pt,mark options={fill=Violet,draw=black},forget plot] coordinates {(-0.8444,-2.0899)};
+\addplot[Brown,thick] coordinates {(3.0902,-3.0902) (-0.1010,-3.0902) (-0.4307,-3.0902) (-0.6655,-3.0902) (-0.7647,-3.0902) (-0.9006,-3.0902) (-0.9907,-3.0902) (-1.0065,-3.0902) (-1.0065,-3.0902) (-1.0065,-3.0902) (-1.0065,-2.5991) (-1.0065,-2.0816) (-1.0065,-2.0816) (-1.0226,-1.9887) (-1.0226,-1.9887) (-1.0226,-1.9887) (-1.0226,-1.9887) (-1.0555,-1.9887) (-1.0555,-1.9105) (-1.0724,-1.8424) (-1.0724,-1.8424) (-1.1434,-1.8424) (-1.1434,-1.8424) (-1.1621,-1.7273) (-1.2007,-1.6774) (-1.2206,-1.6314) (-1.2411,-1.5886) (-1.2621,-1.5886) (-1.2621,-1.4751) (-1.2621,-1.4412) (-1.2621,-1.4089) (-1.2621,-1.3779) (-1.2621,-1.3779) (-1.2621,-1.3779) (-1.2621,-1.3198) (-1.2621,-1.2923) (-1.2837,-1.2657) (-1.2837,-1.2401) (-1.2837,-1.2152) (-1.2837,-1.2152) (-1.2837,-1.2152) (-1.2837,-1.2152) (-1.2837,-1.1910) (-1.2837,-1.1910) (-1.2837,-1.1910) (-1.2837,-1.1910) (-1.2837,-1.1910) (-1.3059,-1.1910) (-1.3059,-1.1910) (-1.3059,-1.1910) (-1.3059,-1.1910) (-1.3059,-1.1910) (-1.3288,-1.1910) (-1.3524,-1.1910) (-1.3768,-1.1910) (-1.3768,-1.1910) (-1.3768,-1.1910) (-1.4281,-1.1910) (-1.4281,-1.1910) (-1.4281,-1.1910) (-1.4553,-1.1910) (-1.4553,-1.1910) (-1.4835,-1.1910) (-1.5439,-1.1910) (-1.5764,-1.1910) (-1.6105,-1.1910) (-1.6105,-1.1910) (-1.6852,-1.1910) (-1.6852,-1.1910) (-1.6852,-1.1910) (-1.7706,-1.1910) (-1.7706,-1.1910) (-1.7706,-1.1910) (-1.8713,-1.1910) (-1.9297,-1.1910) (-1.9297,-1.1675) (-1.9297,-1.1224) (-1.9956,-1.1224) (-1.9956,-1.1007) (-1.9956,-1.1007) (-1.9956,-1.1007) (-1.9956,-1.1007) (-1.9956,-1.1007) (-2.0715,-1.0795) (-2.0715,-1.0795) (-2.1616,-1.0587) (-2.2736,-1.0587) (-2.4246,-1.0186) (-2.4246,-1.0186) (-2.6666,-0.9800) (-2.6666,-0.9069) (-2.6666,-0.8893) (-2.6666,-0.8893) (-2.6666,-0.8893) (-3.0902,-0.8893) (-3.0902,-0.8551) (-3.0902,-0.7269) (-3.0902,-0.6819) (-3.0902,-0.6382) (-3.0902,-0.3320) (-3.0902,3.0902)};\addlegendentry{E6}
+\addplot[only marks,mark=*,mark size=2.3pt,mark options={fill=Brown,draw=black},forget plot] coordinates {(-1.2621,-1.3779)};
+\end{axis}
+\end{tikzpicture}
+\caption{DET curves for E1--E6 on the 1,027-sequence test set. The horizontal and vertical axes show BPCER and maximum species-level APCER, respectively, on probit scales. Circles indicate test-set error rates at validation-selected thresholds.}
+\label{fig:det}
+\end{figure}
+
+\subsection{Limitations}
+The study uses one processed dataset, one subject-disjoint split, and one training seed. It does not establish cross-dataset generalization. Geometry filtering excludes 42 REAL training sequences, changing the training distribution and confounding geometry comparisons. The validation set contains three subjects. The test set includes three attack species, and missing-geometry test-time handling was not assessed because all test sequences had eight valid frames. Repeated-seed experiments, external-dataset evaluation, and concurrent load testing remain future work.
+
+\section{Conclusion}
+This study investigated six face liveness detection configurations by integrating RGB appearance, frame-difference motion, and facial geometry features. Experimental results demonstrate that different feature combinations produce distinct classification and presentation attack detection characteristics. E5 achieved the highest accuracy (94.06\%) and the lowest maximum species APCER (1.83\%), whereas E6, which incorporates adaptive modality weighting and temporal mean pooling, achieved the lowest BPCER (10.34\%) and species-aware ACER (9.38\%). These findings highlight the potential of adaptive multi-cue fusion to balance bona fide presentation detection and presentation attack detection. However, subject-level paired bootstrap analysis did not establish a statistically reliable difference in accuracy or ACER between E5 and E6. Consequently, selecting between these configurations should consider the operational security requirements and the relative costs of accepting presentation attacks and rejecting bona fide users, rather than relying on accuracy alone. Despite these findings, the evaluation is limited to a single subject-disjoint MSU-MFSD split and seed-42 checkpoints. Future work will investigate cross-dataset generalization, repeated-seed evaluation, improved handling of invalid facial geometry, and computational-efficiency analysis and external-dataset evaluation to establish the robustness of the proposed approach.
+
+
+\FloatBarrier
+\begin{thebibliography}{00}
+\bibitem{wen2015ida} D. Wen, H. Han, and A. K. Jain, ``Face Spoof Detection With Image Distortion Analysis,'' \emph{IEEE Transactions on Information Forensics and Security}, vol. 10, no. 4, pp. 746--761, Apr. 2015, doi: 10.1109/TIFS.2015.2400395.
+\bibitem{yu2023survey} Z. Yu, Y. Qin, X. Li, C. Zhao, Z. Lei, and G. Zhao, ``Deep Learning for Face Anti-Spoofing: A Survey,'' \emph{IEEE Transactions on Pattern Analysis and Machine Intelligence}, vol. 45, no. 5, pp. 5609--5631, May 2023, doi: 10.1109/TPAMI.2022.3215850.
+\bibitem{liu2018aux} Y. Liu, A. Jourabloo, and X. Liu, ``Learning Deep Models for Face Anti-Spoofing: Binary or Auxiliary Supervision,'' in \emph{Proc. IEEE CVPR}, 2018, pp. 389--398.
+\bibitem{yu2020cdcn} Z. Yu \emph{et al.}, ``Searching Central Difference Convolutional Networks for Face Anti-Spoofing,'' in \emph{Proc. IEEE/CVF CVPR}, 2020, pp. 5295--5305, doi: 10.1109/CVPR42600.2020.00534.
+\bibitem{yang2019stasn} X. Yang \emph{et al.}, ``Face Anti-Spoofing: Model Matters, so Does Data,'' in \emph{Proc. IEEE/CVF CVPR}, 2019, pp. 3507--3516.
+\bibitem{sun2018temporal} Z. Sun, L. Sun, and Q. Li, ``Investigation in Spatial-Temporal Domain for Face Spoof Detection,'' in \emph{Proc. IEEE ICASSP}, 2018.
+\bibitem{silva2023spatiotemporal} V. L. da Silva \emph{et al.}, ``Residual Spatiotemporal Convolutional Networks for Face Anti-Spoofing,'' \emph{Journal of Visual Communication and Image Representation}, vol. 91, Art. no. 103744, 2023, doi: 10.1016/j.jvcir.2022.103744.
+\bibitem{chang2023geometry} C.-J. Chang \emph{et al.}, ``A Closer Look at Geometric Temporal Dynamics for Face Anti-Spoofing,'' in \emph{Proc. IEEE/CVF CVPR Workshops}, 2023, pp. 1081--1091, doi: 10.1109/CVPRW59228.2023.00115.
+\bibitem{shen2019facebagnet} T. Shen, Y. Huang, and Z. Tong, ``FaceBagNet: Bag-Of-Local-Features Model for Multi-Modal Face Anti-Spoofing,'' in \emph{Proc. IEEE/CVF CVPR Workshops}, 2019.
+\bibitem{yu2020multimodal} Z. Yu \emph{et al.}, ``Multi-Modal Face Anti-Spoofing Based on Central Difference Networks,'' in \emph{Proc. IEEE/CVF CVPR Workshops}, 2020, pp. 2766--2774, doi: 10.1109/CVPRW50498.2020.00333.
+\bibitem{chen2025mmfas} G. Chen \emph{et al.}, ``mmFAS: Multimodal Face Anti-Spoofing Using Multi-Level Alignment and Switch-Attention Fusion,'' in \emph{Proc. AAAI}, vol. 39, no. 1, pp. 58--66, 2025, doi: 10.1609/aaai.v39i1.31980.
+\bibitem{zeng2023bandpass} D. Zeng \emph{et al.}, ``Bandpass Filter Based Dual-Stream Network for Face Anti-Spoofing,'' in \emph{Proc. IEEE/CVF CVPR Workshops}, 2023, pp. 6403--6410.
+\bibitem{kagglemsumfsd} minhtranv, ``MSU-MFSD Processed into Frames,'' Kaggle dataset, accessed Oct. 2026. [Online]. Available: \url{https://www.kaggle.com/datasets/minhtranv/msu-mfsd-processed-into-frames}.
+\bibitem{sokolova2009} M. Sokolova and G. Lapalme, ``A systematic analysis of performance measures for classification tasks,'' \emph{Information Processing \& Management}, vol. 45, no. 4, pp. 427--437, 2009, doi: 10.1016/j.ipm.2009.03.002.
+\bibitem{iso30107} ISO/IEC, \emph{ISO/IEC 30107-3:2023 Information Technology---Biometric Presentation Attack Detection---Part 3: Testing and Reporting}. Geneva, Switzerland: International Organization for Standardization, 2023.
+\end{thebibliography}
+\end{document}
